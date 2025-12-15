@@ -10,11 +10,13 @@ class BPE:
         self.num_merges = num_merges
         self.vocabs = {}
         self.merges = []
+        self.token2id = {}
+        self.id2token = {}
         pass
 
     def get_vocabs(self, text:str):
         vocab = defaultdict(int)
-        for word in text.split():
+        for word in text.split(" "):
             vocab[" ".join(list(word))+ " </w>"] += 1
         return vocab
     
@@ -44,8 +46,21 @@ class BPE:
             best_pairs = max(pairs, key=pairs.get)
             self.merges.append(best_pairs)
             self.merge_vocab(best_pairs)
+        
+        self.tokenizer()
 
-    def encode(self, word):
+    def tokenizer(self):
+        tokens = set()
+        tokens.add("<UNK>")
+        for word in self.vocabs:
+            for token in word.split():
+                tokens.add(token)
+
+        tokens = sorted(tokens)
+        self.token2id = {tok:i for i, tok in enumerate(tokens)}
+        self.id2token = {i:tok for tok, i in self.token2id.items()}
+
+    def encode_text(self, word):
         token = list(word) + ["</w>"]
         for a ,b in self.merges:
             i = 0
@@ -55,10 +70,22 @@ class BPE:
                 else:
                     i+=1
         return token
+    
+    def encode(self, text):
+        ids = []
+        for word in text:
+            tokens = self.encode_text(word)
+            for t in tokens:
+                ids.append(self.token2id.get(t, self.token2id["<UNK>"]))
+        return ids
 
-    def decode(self, token):
+    def decode(self, ids):
+        tokens = [self.id2token[i] for i in ids if i in self.id2token]
+        return self.decode_text(tokens)
+
+    def decode_text(self, token):
         word = "".join(token)
-        return word.replace("</w>","")
+        return word.replace("</w>"," ")
     
     def save_model(self, file:str):
         if not os.path.isdir('models'):
@@ -68,7 +95,8 @@ class BPE:
                 json.dump(
                     {
                         "num_merges":self.num_merges,
-                        "merges": self.merges
+                        "merges": self.merges,
+                        "token2id": self.token2id
                     },
                     file
                 )
@@ -82,7 +110,9 @@ class BPE:
             with open(f'models/{file}.json', 'r') as file:
                 data = json.load(file)
                 self.num_merges = data["num_merges"]
-                self.merges = data["merges"]
+                self.merges =  [tuple(m) for m in data["merges"]]
+                self.token2id = data["token2id"]
+                self.id2token = {int(i):t for t,i in self.token2id.items()}
         except Exception as e:
             print(e)
 

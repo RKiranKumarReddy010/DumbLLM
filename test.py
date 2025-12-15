@@ -12,11 +12,14 @@ with open('./Data/fData.txt',"r") as file:
     data = file.read()
 
 bpe = BPE(100)
-bpe.load_model('jesenlik')
-encode = bpe.encode("i am a comedian")
-print(encode)
-decode = bpe.decode(encode)
-print(decode)
+bpe.fit(data)
+bpe.save_model('anthony_jesenlik')
+
+bpe.load_model('anthony_jesenlik')
+encoded_text = bpe.encode("Hello there, it's saiman says")
+print(encoded_text)
+decoded_text = bpe.decode(encoded_text)
+print(decoded_text)
 
 
 
